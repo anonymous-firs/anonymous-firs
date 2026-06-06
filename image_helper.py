@@ -368,7 +368,7 @@ class ImageHelper(Helper):
                     transforms.ToTensor(),
                 ]),
             }
-            _data_dir = './data/tiny-imagenet-200/'
+            _data_dir = os.path.join('.', 'data', 'tiny-imagenet-200')
             self.train_dataset = datasets.ImageFolder(os.path.join(_data_dir, 'train'),
                                                     _data_transforms['train'])
             self.test_dataset = datasets.ImageFolder(os.path.join(_data_dir, 'val'),

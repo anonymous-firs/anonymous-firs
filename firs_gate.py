@@ -39,7 +39,7 @@ class FIRSScreeningGate:
         self.pipeline_mode = str(params.get("pipeline_mode", "controlled")).lower()
         self.threshold = float(params.get("prefilter_threshold", 0.5))
         self.apply_to = str(params.get("prefilter_apply_to", "poisoned")).lower()
-        self.keep_one_on_empty = bool(params.get("firs_gate_keep_one_on_empty", True))
+        self.keep_one_on_empty = bool(params.get("firs_gate_keep_one_on_empty", False))
 
     def should_screen(self, is_poisoned_client: bool) -> bool:
         if not self.enabled:

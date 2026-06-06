@@ -9,6 +9,11 @@ prefilter_threshold: 0.001
 prefilter_apply_to: poisoned
 
 detector_train_trigger_type: randomized_patch
+firs_contrastive_lambda: 0.1
+firs_contrastive_temperature: 0.1
+firs_target_recall: 0.95
+firs_gate_keep_one_on_empty: false
+
 attack_eval_trigger_type: colored_patch
 trigger_color: green
 trigger_alpha: 0.35

@@ -259,7 +259,7 @@ if __name__ == '__main__':
         ]),
     }
 
-    data_dir = '../data/tiny-imagenet-200/'
+    data_dir = os.path.join('..', 'data', 'tiny-imagenet-200')
 
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                               data_transforms[x])

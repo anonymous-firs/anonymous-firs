@@ -31,8 +31,10 @@ class StateHelper():
         self.params= params
         self.name=""
 
-    def load_data(self, filename='./data/loan/loan_IA.csv'):
+    def load_data(self, filename=None):
         logger.info('Loading data')
+        if filename is None:
+            filename = os.path.join('.', 'data', 'loan', 'loan_IA.csv')
 
         self.all_dataset = LoanDataset(filename)
 
@@ -116,13 +118,13 @@ class LoanHelper(Helper):
         self.benign_namelist = []
         self.feature_dict = dict()
 
-        filepath_prefix='./data/loan/'
+        filepath_prefix = os.path.join('.', 'data', 'loan')
         all_userfilename_list = os.listdir(filepath_prefix)
         for j in range(0,len(all_userfilename_list)):
             user_filename = all_userfilename_list[j]
             state_name = user_filename[5:7]
             helper = StateHelper(params=params_loaded)
-            file_path = filepath_prefix+ user_filename
+            file_path = os.path.join(filepath_prefix, user_filename)
             helper.load_data(file_path)
             self.allStateHelperList.append(helper)
             helper.name = state_name

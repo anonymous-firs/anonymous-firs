@@ -1,6 +1,6 @@
 This repository provides the anonymized implementation for the submitted paper.
 
-The code implements FIRS experiments for federated learning backdoor defense. It includes training code, model definitions, experiment configuration files, sample-screening logic, trigger-family utilities, and lightweight debugging scripts. Datasets, checkpoints, logs, and generated experiment outputs are intentionally excluded from the repository.
+The code implements FIRS experiments for federated learning backdoor defense. It includes training code, model definitions, experiment configuration files, sample-screening logic, trigger-family utilities, and lightweight debugging scripts. Datasets, checkpoints, logs, generated experiment outputs, and manuscript files are intentionally excluded from the repository.
 
 ## Repository Layout
 
@@ -69,6 +69,24 @@ python main.py --params utils/loan_params.yaml
 
 FIRS-specific options are configured in the YAML files, including `enable_firs_gate`, `pipeline_mode`, `prefilter_threshold`, `prefilter_apply_to`, and trigger-family options such as `detector_train_trigger_type`.
 
+## FIRS Implementation
+
+The detector in `models/model_resnet_grid.py` follows the submitted method:
+
+- Global Semantic Encoder (GSE): a ResNet-18 feature extractor over normalized images.
+- Tile-wise Statistical Encoder (TSE): a grid encoder that computes soft histograms, mean, variance, skewness, and kurtosis for local tiles.
+- Fusion Screening Head (FSH): a binary screening head over concatenated semantic and statistical embeddings.
+
+The detector training helper in `firs_detector_training.py` constructs paired clean and triggered samples. Its training step optimizes:
+
+```text
+BCEWithLogitsLoss + lambda * supervised_contrastive_loss(statistical_embedding)
+```
+
+Use `firs_contrastive_lambda` for a fixed nonnegative weight, or attach a learnable parameter with `attach_learnable_contrastive_weight(detector)` before constructing the optimizer so that `lambda = softplus(xi)` is optimized with the detector.
+
+Threshold selection is recall-oriented. The helper `calibrate_recall_threshold(scores, labels, target_recall)` chooses the highest suspiciousness threshold that satisfies the requested validation recall for triggered samples, then reports the corresponding false-positive rate. The resulting threshold is used as `prefilter_threshold` for local sample screening. The deployed FIRS gate applies a frozen detector and the calibrated threshold before local optimization; it does not use online score histories or a per-batch rejection budget.
+
 ## Reproducing Tables
 
 Use the configuration files in `utils/` to reproduce the main comparisons:
@@ -93,6 +111,13 @@ The helper script `gc.py` can summarize generated result directories when CSV ou
 
 ```bash
 python gc.py --root saved_models --out results
+```
+
+Run lightweight FIRS smoke checks without datasets:
+
+```bash
+python scripts/debug_detector_training_hook.py
+python scripts/debug_firs_gate_pipeline.py
 ```
 
 ## Expected Outputs

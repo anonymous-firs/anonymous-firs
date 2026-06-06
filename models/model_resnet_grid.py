@@ -3,9 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 
-# -----------------------------
-# Soft histogram over pixels
-# -----------------------------
+
 class SoftHistogram(nn.Module):
     def __init__(self, bins: int = 32, min: float = 0.0, max: float = 1.0, sigma: float = 0.01):
         super().__init__()
@@ -36,6 +34,13 @@ class SoftHistogram(nn.Module):
 # Grid-aware distribution stem
 # -----------------------------
 class GridDistributionStem(nn.Module):
+    """Tile-wise Statistical Encoder (TSE).
+
+    The encoder partitions each image into a regular grid, computes soft
+    intensity histograms and low-order moments per tile, and projects the
+    resulting statistics into a compact embedding.
+    """
+
     def __init__(self, out_dim: int = 128, bins: int = 32, sigma: float = 0.05, grid_size: int = -1):
         """
         grid_size: split HxW into a grid_size x grid_size grid of non-overlapping patches.
@@ -53,7 +58,11 @@ class GridDistributionStem(nn.Module):
 
     def _auto_grid(self, H: int, W: int) -> int:
         m = min(H, W)
-        return 8
+        if m >= 64:
+            return 8
+        if m >= 32:
+            return 4
+        return 2
 
     def _ensure_proj(self, in_dim: int, device: torch.device):
         """Create the projection layer once and place it on the correct device."""
@@ -102,7 +111,8 @@ class GridDistributionStem(nn.Module):
 
         hist = self.hist_layer(x_grid)           # [B,3,NP,bins]
         mean = x_grid.mean(-1)                   # [B,3,NP]
-        std  = x_grid.std(-1) + 1e-6             # [B,3,NP]
+        variance = x_grid.var(-1, unbiased=False) + 1e-6
+        std = torch.sqrt(variance)
         z = (x_grid - mean[..., None]) / std[..., None]
         skew = (z ** 3).mean(-1)                 # [B,3,NP]
         kurt = (z ** 4).mean(-1) - 3.0           # [B,3,NP]
@@ -111,7 +121,7 @@ class GridDistributionStem(nn.Module):
         grid_feat = torch.cat([
             hist,                     # [B,3,NP,bins]
             mean[..., None],          # [B,3,NP,1]
-            std[..., None],           # [B,3,NP,1]
+            variance[..., None],      # [B,3,NP,1]
             skew[..., None],          # [B,3,NP,1]
             kurt[..., None],          # [B,3,NP,1]
         ], dim=3).contiguous()        # [B,3,NP,(bins+4)]
@@ -130,6 +140,8 @@ class GridDistributionStem(nn.Module):
 # ResNet18 + grid distribution stem
 # -----------------------------
 class ResNet18Dist(nn.Module):
+    """FIRS detector with GSE, TSE, and Fusion Screening Head (FSH)."""
+
     def __init__(self, pretrained: bool = True, bins: int = 32, dist_dim: int = 128, grid_size: int = -1):
         super().__init__()
 
@@ -144,22 +156,23 @@ class ResNet18Dist(nn.Module):
         self.dist_dim = dist_dim
 
 
-        self.head = nn.Sequential(
+        self.fusion_head = nn.Sequential(
             nn.LayerNorm(self.feat_dim + self.dist_dim),
             nn.Linear(self.feat_dim + self.dist_dim, 256),
             nn.GELU(),
             nn.Linear(256, 1)
         )
+        self.head = self.fusion_head
 
 
         self.register_buffer("im_mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer("im_std",  torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, return_features: bool = False):
         """
         Returns:
           logits: [B], compatible with BCEWithLogitsLoss targets shaped [B].
-          dist_feat: [B, dist_dim]
+          dist_feat: [B, dist_dim], used by the supervised contrastive term.
         """
 
         dist_feat = self.dist_stem(x)  # [B, dist_dim]
@@ -169,6 +182,13 @@ class ResNet18Dist(nn.Module):
         cnn_feat = self.backbone(x_norm)  # [B, 512]
 
 
-        feat = torch.cat([cnn_feat, dist_feat], dim=1)      # [B, 512+dist_dim]
-        logits = self.head(feat).squeeze(-1)
+        fused_feat = torch.cat([cnn_feat, dist_feat], dim=1)      # [B, 512+dist_dim]
+        logits = self.fusion_head(fused_feat).squeeze(-1)
+        if return_features:
+            return {
+                "logits": logits,
+                "semantic_features": cnn_feat,
+                "statistical_features": dist_feat,
+                "fused_features": fused_feat,
+            }
         return logits, dist_feat
