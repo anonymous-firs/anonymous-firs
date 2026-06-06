@@ -1,0 +1,39 @@
+# Local datasets and generated experiment artifacts
+data/
+saved_models/
+results/
+debug_outputs/
+logs/
+outputs/
+checkpoints/
+runs/
+wandb/
+tensorboard/
+
+# Python caches
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+
+# Model checkpoints and archives
+*.pth
+*.pt
+*.ckpt
+*.tar
+*.tar.gz
+*.gz
+*.zip
+
+# Logs and local command scratch files
+*.log
+events.out.tfevents*
+nohup.out
+_command.txt
+
+# OS/editor noise
+.DS_Store
+__MACOSX/
+.vscode/
+.idea/
+.ipynb_checkpoints/
