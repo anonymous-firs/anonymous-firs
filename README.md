@@ -69,6 +69,25 @@ python main.py --params utils/loan_params.yaml
 
 FIRS-specific options are configured in the YAML files, including `enable_firs_gate`, `pipeline_mode`, `prefilter_threshold`, `prefilter_apply_to`, and trigger-family options such as `detector_train_trigger_type`.
 
+## DF-DBA Trigger Protocol
+
+The trigger implementation in `trigger_family.py` follows the submitted DF-DBA setting. A global trigger is split into four local fragments, so no single malicious client needs the full trigger. The default geometry is generated from Trigger Size, Trigger Gap, and Trigger Location:
+
+- MNIST: `4, 2, 0`
+- CIFAR-10: `6, 3, 0`
+- Tiny-ImageNet: `10, 2, 0`
+
+Explicit YAML coordinates such as `0_poison_pattern` still take precedence. When they are absent, the helper `get_df_dba_fragment_coords` generates the paper geometry automatically.
+
+The main DF-DBA protocol is available as `trigger_type: df_dba` or `detector_train_trigger_type: df_dba`. It samples the four main local trigger families:
+
+- `color_patch`: solid colors sampled from white, gray, red, green, blue, and yellow.
+- `texture`: checkerboard, stripe, and dot patterns.
+- `blended`: alpha blending with alpha sampled from `0.1, 0.2, 0.3`.
+- `low_amplitude`: additive perturbations with delta sampled from `4/255, 8/255, 12/255`.
+
+Extended trigger-family analysis can use `frequency` and `warping`, or `df_dba_extended` to sample across all six families. Frequency fragments use local sinusoidal patterns with amplitudes from `4/255, 8/255, 12/255` and frequencies from `2, 4, 6`. Warping fragments apply local spatial displacement, with the default maximum displacement set to 2 pixels for MNIST/CIFAR-10 and 4 pixels for Tiny-ImageNet.
+
 ## FIRS Implementation
 
 The detector in `models/model_resnet_grid.py` follows the submitted method:
@@ -116,6 +135,8 @@ python gc.py --root saved_models --out results
 Run lightweight FIRS smoke checks without datasets:
 
 ```bash
+python scripts/debug_trigger_family.py
+python scripts/debug_cross_trigger_smoke.py
 python scripts/debug_detector_training_hook.py
 python scripts/debug_firs_gate_pipeline.py
 ```

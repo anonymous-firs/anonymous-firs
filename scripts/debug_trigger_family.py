@@ -8,14 +8,16 @@ from trigger_family import TriggerConfig, apply_trigger_fragment
 
 
 def main():
-    image = torch.zeros(3, 32, 32)
+    image = torch.linspace(0.0, 1.0, 3 * 32 * 32).view(3, 32, 32)
     coords = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5]]
     families = [
-        TriggerConfig("white_patch"),
-        TriggerConfig("colored_patch", color="red"),
-        TriggerConfig("low_alpha_patch", alpha=0.2),
-        TriggerConfig("blended_patch", color="blue", alpha=0.35),
-        TriggerConfig("randomized_patch", jitter=1, size_delta=1),
+        TriggerConfig("color_patch", color="red"),
+        TriggerConfig("texture", texture="checkerboard"),
+        TriggerConfig("blended", color="blue", alpha=0.2),
+        TriggerConfig("low_amplitude", delta=8.0 / 255.0),
+        TriggerConfig("frequency", delta=8.0 / 255.0, frequency=4),
+        TriggerConfig("warping", displacement=2),
+        TriggerConfig("df_dba", jitter=1, size_delta=1),
     ]
 
     for cfg in families:

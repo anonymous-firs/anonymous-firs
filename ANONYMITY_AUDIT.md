@@ -53,6 +53,8 @@ The recursive artifact-name scan has expected benign matches for utility scripts
 - The contrastive weight can be fixed through YAML or learned as `lambda = softplus(xi)`.
 - Recall-oriented validation threshold calibration is implemented in `firs_detector_training.py`.
 - The local FIRS gate applies a frozen detector and calibrated threshold before local optimization, without online score histories or a default per-batch rejection budget.
+- The DF-DBA trigger implementation supports the paper geometry and trigger families: color patch, texture, blended, low-amplitude, frequency, and warping.
+- The main `df_dba` trigger setting samples the first four trigger families; `df_dba_extended` includes frequency and warping for extended analysis.
 
 ## Final Assessment
 

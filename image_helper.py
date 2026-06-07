@@ -28,7 +28,7 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import datetime
 import json
-from trigger_family import TriggerConfig, apply_trigger_fragment
+from trigger_family import apply_trigger_fragment, get_df_dba_fragment_coords, trigger_config_from_params
 
 
 class ImageHelper(Helper):
@@ -557,30 +557,16 @@ class ImageHelper(Helper):
 
     def add_pixel_pattern(self, image, adversarial_index):
         """
-        Apply a DBA trigger fragment. The default white_patch path preserves the
-        original DBA behavior; other trigger families are opt-in by parameter.
+        Apply one DF-DBA local trigger fragment for attack evaluation.
         """
         coords = self._trigger_coords(adversarial_index)
         norm = self._find_normalize_stats(getattr(getattr(self, "train_dataset", None), "transform", None))
         mean, std = norm if norm is not None else (None, None)
-        cfg = TriggerConfig(
-            trigger_type=str(self.params.get("attack_eval_trigger_type", self.params.get("trigger_type", "white_patch"))).lower(),
-            color=str(self.params.get("trigger_color", "white")).lower(),
-            alpha=float(self.params.get("trigger_alpha", 1.0)),
-            intensity=float(self.params.get("trigger_intensity", 1.0)),
-            jitter=int(self.params.get("trigger_jitter", 0)),
-            size_delta=int(self.params.get("trigger_size_delta", 0)),
-            randomize=bool(self.params.get("trigger_randomize", False)),
-        )
+        cfg = trigger_config_from_params(self.params, evaluation=True)
         return apply_trigger_fragment(image, coords, cfg, mean=mean, std=std)
 
     def _trigger_coords(self, adversarial_index):
-        if adversarial_index == -1:
-            coords = []
-            for i in range(self.params.get('trigger_num', 1)):
-                coords += self.params[f"{i}_poison_pattern"]
-            return coords
-        return self.params[f"{adversarial_index}_poison_pattern"]
+        return get_df_dba_fragment_coords(self.params, adversarial_index)
 
     def _find_normalize_stats(self, tfm):
         if tfm is None:

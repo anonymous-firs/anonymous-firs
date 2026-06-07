@@ -4,24 +4,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from trigger_family import apply_trigger_fragment, trigger_config_from_params
+from trigger_family import apply_trigger_fragment, get_df_dba_fragment_coords, trigger_config_from_params
 
 
 def get_dba_coords(params, adversarial_index=-1):
-    if adversarial_index == -1:
-        coords = []
-        for i in range(int(params.get("trigger_num", 1))):
-            coords += params[f"{i}_poison_pattern"]
-        return coords
-    return params[f"{adversarial_index}_poison_pattern"]
+    return get_df_dba_fragment_coords(params, adversarial_index)
 
 
 def build_detector_training_batch(clean_images, params, adversarial_index=-1, mean=None, std=None):
     """Create clean negatives and trigger-family positives for FIRS detector training.
 
-    Defaults preserve the original white-patch detector mode through
-    detector_train_trigger_type='white_patch'. Set it to 'randomized_patch' to
-    make positive samples vary by color, alpha, jitter, intensity, and size.
+    The paper default is detector_train_trigger_type='df_dba', which samples
+    color patch, texture, blended, and low-amplitude local fragments under the
+    distributed DBA geometry.
     """
     cfg = trigger_config_from_params(params, evaluation=False)
     coords = get_dba_coords(params, adversarial_index)
